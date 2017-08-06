@@ -193,20 +193,17 @@
  *     params: [...nested nodes go here...],
  *   }
  *
- * When transforming the AST we can manipulate nodes by
- * adding/removing/replacing properties, we can add new nodes, remove nodes, or
- * we could leave the existing AST alone and create an entirely new one based
- * on it.
+ * 当转换抽象语法树的时候，我们可以通过 添加/删除/替换 节点的属性来操作节点。
+ * 我们可以添加新的节点，删除节点，或者我们我们通过当前抽象语法树来创建一个新的
+ * 抽象语法树。
  *
- * Since we’re targeting a new language, we’re going to focus on creating an
- * entirely new AST that is specific to the target language.
+ * 一旦我们选择好了要编译成目标语言，我们就要专注于创建一个针对这个目标语言的特殊的
+ * 抽象语法树。
  *
- * Traversal
+ * 遍历
  * ---------
  *
- * In order to navigate through all of these nodes, we need to be able to
- * traverse through them. This traversal process goes to each node in the AST
- * depth-first.
+ * 我了给这些节点创建个导航，我们需要使用深度优先遍历这个抽象语法树。
  *
  *   {
  *     type: 'Program',
@@ -230,46 +227,41 @@
  *     }]
  *   }
  *
- * So for the above AST we would go:
+ * 所以，对于上面的抽象语法树，我们应该这样做：
  *
- *   1. Program - Starting at the top level of the AST
- *   2. CallExpression (add) - Moving to the first element of the Program's body
- *   3. NumberLiteral (2) - Moving to the first element of CallExpression's params
- *   4. CallExpression (subtract) - Moving to the second element of CallExpression's params
- *   5. NumberLiteral (4) - Moving to the first element of CallExpression's params
- *   6. NumberLiteral (2) - Moving to the second element of CallExpression's params
+ *   1. Program - 从抽象语法树的最顶层开始
+ *   2. CallExpression (add) - 移到 Program 的 body 的第一个元素上
+ *   3. NumberLiteral (2) - 移动到 CallExpression's 的 params 第一个参数元素上
+ *   4. CallExpression (subtract) - 移动到 CallExpression's 的第二个参数元素上
+ *   5. NumberLiteral (4) - 移动到 CallExpression's 第一个参数元素上
+ *   6. NumberLiteral (2) - 移动到 CallExpression's 第二个参数元素上
  *
- * If we were manipulating this AST directly, instead of creating a separate AST,
- * we would likely introduce all sorts of abstractions here. But just visiting
- * each node in the tree is enough for what we're trying to do.
+ * 如果我们直接操作抽象语法树而不是单独创建一个抽象语法树,我们可能需要说明这里所有的首相概念。
+ * 但是对于我们来说 “参观” 一遍这些节点就足够了。
  *
- * The reason I use the word "visiting" is because there is this pattern of how
- * to represent operations on elements of an object structure.
+ * 这里我用 “参观” 这个词的原因是这里是一种代表操作对象结构的元素的一种方法
  *
- * Visitors
+ * 参观者
  * --------
  *
- * The basic idea here is that we are going to create a “visitor” object that
- * has methods that will accept different node types.
+ * 这里我们有个基础的想法，创建一个 “参观者” 对象，其包含从不同节点类型传过来的方法
  *
  *   var visitor = {
  *     NumberLiteral() {},
  *     CallExpression() {},
  *   };
  *
- * When we traverse our AST, we will call the methods on this visitor whenever we
- * "enter" a node of a matching type.
+ * 当我们遍历这个抽象语法树的时候，我们可以随时通过 “参观者” 调用方法无论何时我们 “进入” 
+ * 相匹配的节点
  *
- * In order to make this useful we will also pass the node and a reference to
- * the parent node.
+ * 为了使上述行为生效，我们需要传入 node 节点和 parent 节点的引用作为参数。
  *
  *   var visitor = {
  *     NumberLiteral(node, parent) {},
  *     CallExpression(node, parent) {},
  *   };
  *
- * However, there also exists the possibility of calling things on "exit". Imagine
- * our tree structure from before in list form:
+ * 然后我们还是需要有种方式来推出。设想一下我们的树结构是这样一种结构
  *
  *   - Program
  *     - CallExpression
@@ -278,9 +270,8 @@
  *         - NumberLiteral
  *         - NumberLiteral
  *
- * As we traverse down, we're going to reach branches with dead ends. As we
- * finish each branch of the tree we "exit" it. So going down the tree we
- * "enter" each node, and going back up we "exit".
+ * 当我们便利到最下面的时候，我们需要接触到最后的分支。当我们遍历完每个树的分支后
+ * 我们需要从中退出。所以，向下遍历我们需要 “进入”，返回时候我们需要 “退出”。
  *
  *   -> Program (enter)
  *     -> CallExpression (enter)
@@ -295,7 +286,7 @@
  *     <- CallExpression (exit)
  *   <- Program (exit)
  *
- * In order to support that, the final form of our visitor will look like this:
+ * 为了支持以上，我们 “参观者” 最终结果如下：
  *
  *   var visitor = {
  *     NumberLiteral: {
@@ -306,39 +297,33 @@
  */
 
 /**
- * Code Generation
+ * 代码生成
  * ---------------
  *
- * The final phase of a compiler is code generation. Sometimes compilers will do
- * things that overlap with transformation, but for the most part code
- * generation just means take our AST and string-ify code back out.
+ * 这个编译器最后一部分是代码生成。有些时候编译器会在转换的过程里面做这件事，但是大部门代码生成器
+ * 仅仅意味着把我们的抽象语法树编程最终代码
  *
- * Code generators work several different ways, some compilers will reuse the
- * tokens from earlier, others will have created a separate representation of
- * the code so that they can print node linearly, but from what I can tell most
- * will use the same AST we just created, which is what we’re going to focus on.
+ * 代码生成器可以通过很多种方式来工作，一些编译器会重复使用早前的 “token” ，另一些会生成一个代码
+ * 片段来代表这段代码，然后可以线性的打印出这些节点，但是这里我可以告诉大家，我们会使用我们刚刚创建
+ * 的抽象语法树来生成代码
  *
- * Effectively our code generator will know how to “print” all of the different
- * node types of the AST, and it will recursively call itself to print nested
- * nodes until everything is printed into one long string of code.
+ * 我们的代码生成器会有效的 “打印” 抽象语法树上所有不同类型的节点，同时也会递归打印出这些代码变为
+ * 字符串。
  */
 
 /**
- * And that's it! That's all the different pieces of a compiler.
+ * 之后，我们就可以开始了，熊这个编译器的每个部分开始。
  *
- * Now that isn’t to say every compiler looks exactly like I described here.
- * Compilers serve many different purposes, and they might need more steps than
- * I have detailed.
+ * 事实上，不是所有的编译器都和我这里叙述的编译器类似。每个编译器都有不同的目的，所以他们可能有
+ * 比我叙述的编译器拥有更多的步骤。
  *
- * But now you should have a general high-level idea of what most compilers look
- * like.
+ * 但是现在你可以战歌一个更高的角度来概括一个编译器会长什么样。
  *
- * Now that I’ve explained all of this, you’re all good to go write your own
- * compilers right?
+ * 我已经标书这么多了，现在你准备好去写一个自己的编译器了吧？
  *
- * Just kidding, that's what I'm here to help with :P
+ * 开个玩笑，我还是会在这里和你一起完成这个编译器的 :P
  *
- * So let's begin...
+ * 所以，我们开始吧。。。
  */
 
 /**
