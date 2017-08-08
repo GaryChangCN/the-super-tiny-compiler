@@ -334,59 +334,50 @@
  */
 
 /**
- * We're gonna start off with our first phase of parsing, lexical analysis, with
- * the tokenizer.
+ * 我们开始解析过程的第一阶段，使用 tokenizer 词法分析。
  *
- * We're just going to take our string of code and break it down into an array
- * of tokens.
+ * 这一步要做的是字符串变成每项由 token 组成的数组
  *
  *   (add 2 (subtract 4 2))   =>   [{ type: 'paren', value: '(' }, ...]
  */
 
-// We start by accepting an input string of code, and we're gonna set up two
-// things...
+// 我们从接受一个名为 input 的字符串开始，之后将设置两个东西
 function tokenizer(input) {
 
-  // A `current` variable for tracking our position in the code like a cursor.
+  // `current` 变量用来追踪我们现在在代码中的的位置，类似于光标
   let current = 0;
 
-  // And a `tokens` array for pushing our tokens to.
+  // `tokens` 数组用来存贮我们的 token
   let tokens = [];
 
-  // We start by creating a `while` loop where we are setting up our `current`
-  // variable to be incremented as much as we want `inside` the loop.
+  // 我们从创建一个 while 循环开始，然后按着我们需要的长度来递增 current 变量
   //
-  // We do this because we may want to increment `current` many times within a
-  // single loop because our tokens can be any length.
+  // 我们这样做的原因是 current 增加可能是多次的并且由于我们 token 的长度是任意的，所以
+  // 其增加的长度也是任意的。
   while (current < input.length) {
 
-    // We're also going to store the `current` character in the `input`.
+    // 我们同事来存贮 input 字符串的当前值
     let char = input[current];
 
-    // The first thing we want to check for is an open parenthesis. This will
-    // later be used for `CallExpression` but for now we only care about the
-    // character.
-    //
-    // We check to see if we have an open parenthesis:
+    // 首先要租的事情是检查圆括号，之后将会被用到 `CallExpression` 中。
+    // 我们要检查是不是有左边开括号
     if (char === '(') {
 
-      // If we do, we push a new token with the type `paren` and set the value
-      // to an open parenthesis.
+      // 如果是的，我们会把一个有 key 为 type 值为 paren 和 key 为 value 值为 (
+      // 的对象推入到 tokens 中
       tokens.push({
         type: 'paren',
         value: '(',
       });
 
-      // Then we increment `current`
+      // 之后递增 `current`
       current++;
 
-      // And we `continue` onto the next cycle of the loop.
+      // 然后进入下次循环
       continue;
     }
 
-    // Next we're going to check for a closing parenthesis. We do the same exact
-    // thing as before: Check for a closing parenthesis, add a new token,
-    // increment `current`, and `continue`.
+    // 之后我们要寻找右括号，然后重复上文的动作
     if (char === ')') {
       tokens.push({
         type: 'paren',
@@ -396,13 +387,7 @@ function tokenizer(input) {
       continue;
     }
 
-    // Moving on, we're now going to check for whitespace. This is interesting
-    // because we care that whitespace exists to separate characters, but it
-    // isn't actually important for us to store as a token. We would only throw
-    // it out later.
-    //
-    // So here we're just going to test for existence and if it does exist we're
-    // going to just `continue` on.
+    // 移动后我们将检查空格及空白字符串，若匹配到则不作任何处理，光标继续后移
     let WHITESPACE = /\s/;
     if (WHITESPACE.test(char)) {
       current++;
