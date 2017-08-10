@@ -480,7 +480,7 @@ function tokenizer(input) {
 /**
  * ============================================================================
  *                                 ヽ/❀o ل͜ o\ﾉ
- *                                THE PARSER!!!
+ *                                   解析器!!!
  * ============================================================================
  */
 
@@ -623,9 +623,8 @@ function parser(tokens) {
  */
 
 /**
- * So now we have our AST, and we want to be able to visit different nodes with
- * a visitor. We need to be able to call the methods on the visitor whenever we
- * encounter a node with a matching type.
+ * 现在我们已经得到了抽象语法树，但是我们系统能在一个 visitor 中获取到任意一个节点。我们需要
+ * 一个方法当匹配到想要的节点时候会触发这个方法
  *
  *   traverse(ast, {
  *     Program(node, parent) {
@@ -642,88 +641,78 @@ function parser(tokens) {
  *   });
  */
 
-// So we define a traverser function which accepts an AST and a
-// visitor. Inside we're going to define two functions...
+// 所以我们定义了 一个 traverser 函数，其接受 ast 和 visitor 两个参数，
+// 在函数内部内有两个函数
 function traverser(ast, visitor) {
 
-  // A `traverseArray` function that will allow us to iterate over an array and
-  // call the next function that we will define: `traverseNode`.
+  // traverseArray 函数允许我们遍历完整个数组，并调用接下来定义的 traverseNode 函数
   function traverseArray(array, parent) {
     array.forEach(child => {
       traverseNode(child, parent);
     });
   }
 
-  // `traverseNode` will accept a `node` and its `parent` node. So that it can
-  // pass both to our visitor methods.
+  // `traverseNode` 接受 node 参数 和 node 的 parent 参数，所以我们可以把两者传给 visitor
   function traverseNode(node, parent) {
 
-    // We start by testing for the existence of a method on the visitor with a
-    // matching `type`.
+    // 我们从 visitor 存在的方法开始（node 的类型）类作为 methods 变量
     let methods = visitor[node.type];
 
-    // If there is an `enter` method for this node type we'll call it with the
-    // `node` and its `parent`.
+    // 其如果存在并且存在 enter 方法，则调用这个方法，并把 node 和 parent 作为参数传入
     if (methods && methods.enter) {
       methods.enter(node, parent);
     }
 
-    // Next we are going to split things up by the current node type.
+    // 之后我们讲根据不同的节点类型类做不同的事情
     switch (node.type) {
 
-      // We'll start with our top level `Program`. Since Program nodes have a
-      // property named body that has an array of nodes, we will call
-      // `traverseArray` to traverse down into them.
+      // 在开始的网时候，我我们最顶层的是一个名为 Program 的对象，其有一个body属性来储存 
+      // nodes 数组，我们调用 traverseArray 函数来把其传入进该数组
       //
-      // (Remember that `traverseArray` will in turn call `traverseNode` so  we
-      // are causing the tree to be traversed recursively)
+      // （记住 traverseArray 函数会调用 traverseNode 函数，所以我们可以递归来遍历整个树）
       case 'Program':
         traverseArray(node.body, node);
         break;
 
-      // Next we do the same with `CallExpression` and traverse their `params`.
+      // 之后我们对 CallExpression 类型做相同的事情，并且返回其 参数
       case 'CallExpression':
         traverseArray(node.params, node);
         break;
 
-      // In the cases of `NumberLiteral` and `StringLiteral` we don't have any
-      // child nodes to visit, so we'll just break.
+      // 在这里， NumberLiteral 类型和 StringLiteral 类型没有后代元素，所以不做处理
       case 'NumberLiteral':
       case 'StringLiteral':
         break;
 
-      // And again, if we haven't recognized the node type then we'll throw an
-      // error.
+      // 同样的，没有匹配到节点类型，则会抛出错误
       default:
         throw new TypeError(node.type);
     }
 
-    // If there is an `exit` method for this node type we'll call it with the
-    // `node` and its `parent`.
+    // 如果其还存在 exit 方法，我们则调用该方法并把 node 和 parent 当参数传入
     if (methods && methods.exit) {
       methods.exit(node, parent);
     }
   }
 
-  // Finally we kickstart the traverser by calling `traverseNode` with our ast
-  // with no `parent` because the top level of the AST doesn't have a parent.
+  // 最后我们调用 tarverserNode 函数并传入 ast 树作为 node 参数，之所以没有 parent 参数，
+  // 是因为我们从最顶层开始
   traverseNode(ast, null);
 }
 
 /**
  * ============================================================================
  *                                   ⁽(◍˃̵͈̑ᴗ˂̵͈̑)⁽
- *                              THE TRANSFORMER!!!
+ *                                    转换器!!!
  * ============================================================================
  */
 
 /**
- * Next up, the transformer. Our transformer is going to take the AST that we
- * have built and pass it to our traverser function with a visitor and will
- * create a new ast.
+ * 下一步，转换器，我们的转换器将通过把抽象语法树和 visitor 作为 traverse 函数参数来产生一个
+ * 新的抽象语法树
  *
  * ----------------------------------------------------------------------------
- *   Original AST                     |   Transformed AST
+ *   原始 AST                          |   转换后的 AST
  * ----------------------------------------------------------------------------
  *   {                                |   {
  *     type: 'Program',               |     type: 'Program',
@@ -758,34 +747,30 @@ function traverser(ast, visitor) {
  * ----------------------------------------------------------------------------
  */
 
-// So we have our transformer function which will accept the lisp ast.
+// 所以我们的转换器接受 lisp 的抽象语法树
 function transformer(ast) {
 
-  // We'll create a `newAst` which like our previous AST will have a program
-  // node.
+  // 我们像以前一样创建一个有 Program 节点的新 ast
   let newAst = {
     type: 'Program',
     body: [],
   };
 
-  // Next I'm going to cheat a little and create a bit of a hack. We're going to
-  // use a property named `context` on our parent nodes that we're going to push
-  // nodes to their parent's `context`. Normally you would have a better
-  // abstraction than this, but for our purposes this keeps things simple.
+  // 之后我会使用一点 hack的方法，我们将使用一个名为 context 的属性在我们的父节点上然后我们可以
+  // 把节点放到其父元素的的 context 上。按正常的方法，你可以把这步做的更好，但是我们的目的是把事情
+  // 做的简单
   //
-  // Just take note that the context is a reference *from* the old ast *to* the
-  // new ast.
+  // 仅仅需要记住 context 只是在新的 ast 树中对老的 ast 的引用
   ast._context = newAst.body;
 
-  // We'll start by calling the traverser function with our ast and a visitor.
+  // 开始调用我们之前创建的 traverser 函数
   traverser(ast, {
 
-    // The first visitor method accepts any `NumberLiteral`
+    // 第一个 visitor 方法接受任何 NumberLiteral
     NumberLiteral: {
-      // We'll visit them on enter.
+      // 我们将在 enter 方法中获取他
       enter(node, parent) {
-        // We'll create a new node also named `NumberLiteral` that we will push to
-        // the parent context.
+        // 我们讲创建一个同样名为 NumberLiteral 的新街点然后推送到父元素的 context 中
         parent._context.push({
           type: 'NumberLiteral',
           value: node.value,
@@ -793,7 +778,7 @@ function transformer(ast) {
       },
     },
 
-    // Next we have `StringLiteral`
+    // 之后我们有 StringLiteral
     StringLiteral: {
       enter(node, parent) {
         parent._context.push({
@@ -803,12 +788,11 @@ function transformer(ast) {
       },
     },
 
-    // Next up, `CallExpression`.
+    // 之后是 CallExpression
     CallExpression: {
       enter(node, parent) {
 
-        // We start creating a new node `CallExpression` with a nested
-        // `Identifier`.
+        // 我们创建一个名为 CallExpression 的新节点，其有嵌套的 Identifier
         let expression = {
           type: 'CallExpression',
           callee: {
@@ -818,73 +802,65 @@ function transformer(ast) {
           arguments: [],
         };
 
-        // Next we're going to define a new context on the original
-        // `CallExpression` node that will reference the `expression`'s arguments
-        // so that we can push arguments.
+        // 之后我们将定义新的 context在原始的 CallExpression 节点，其代表着
+        // expression 的参数列表，所以我们可以把新 expression 添加进参数列表
         node._context = expression.arguments;
 
-        // Then we're going to check if the parent node is a `CallExpression`.
-        // If it is not...
+        // 之后我们会检查父元素是不是 CallExpression
+        // 如果不是的话。。。
         if (parent.type !== 'CallExpression') {
 
-          // We're going to wrap our `CallExpression` node with an
-          // `ExpressionStatement`. We do this because the top level
-          // `CallExpression` in JavaScript are actually statements.
+          // 我们将会用 ExpressionStatement 把 CallExpression 节点包裹起来
+          // 这样做的原因是最 js 顶层的 CallExpression 时隔真实的语法声明 
           expression = {
             type: 'ExpressionStatement',
             expression: expression,
           };
         }
 
-        // Last, we push our (possibly wrapped) `CallExpression` to the `parent`'s
-        // `context`.
+        // 最后我们把 CallExpression （或 ExpressionStatement ） 推入到父元素的 context中
         parent._context.push(expression);
       },
     }
   });
 
-  // At the end of our transformer function we'll return the new ast that we
-  // just created.
+  // 最后我们把这个新的抽象语法树返回即可
   return newAst;
 }
 
 /**
  * ============================================================================
  *                               ヾ（〃＾∇＾）ﾉ♪
- *                            THE CODE GENERATOR!!!!
+ *                            代码生成器!!!!
  * ============================================================================
  */
 
 /**
- * Now let's move onto our last phase: The Code Generator.
+ * 现在，让我们进入最后一步：代码生成器
  *
- * Our code generator is going to recursively call itself to print each node in
- * the tree into one giant string.
+ * 我们的代码生成器将会递归调用自己来以正确的字符串形式打印出树的每个节点
  */
 
 function codeGenerator(node) {
 
-  // We'll break things down by the `type` of the `node`.
+  // 我们根据节点的类型来操作
   switch (node.type) {
 
-    // If we have a `Program` node. We will map through each node in the `body`
-    // and run them through the code generator and join them with a newline.
+    // 如果遇到了 Program 节点，我们将会对其 body 中每个节点来使用代码生成器函数
+    // 来输出目标代码，最后是把代码换行
     case 'Program':
       return node.body.map(codeGenerator)
         .join('\n');
 
-    // For `ExpressionStatement` we'll call the code generator on the nested
-    // expression and we'll add a semicolon...
+    // 对于 ExpressionStatement 我们会调用代码生成器在嵌套的语法端上，并在末尾加上分号
     case 'ExpressionStatement':
       return (
         codeGenerator(node.expression) +
-        ';' // << (...because we like to code the *correct* way)
+        ';' // << (...因为我们希望代码能显示的好看一点)
       );
 
-    // For `CallExpression` we will print the `callee`, add an open
-    // parenthesis, we'll map through each node in the `arguments` array and run
-    // them through the code generator, joining them with a comma, and then
-    // we'll add a closing parenthesis.
+    // 对于 CallExpression 我们将会打印出其 callee 和左括号，我们讲遍历参数列表，并把每项传入到
+    // 代码生成器中，并用逗号分割，最后加上右括号
     case 'CallExpression':
       return (
         codeGenerator(node.callee) +
@@ -894,19 +870,19 @@ function codeGenerator(node) {
         ')'
       );
 
-    // For `Identifier` we'll just return the `node`'s name.
+    // 对于标识符，我们只需要返回其 name 即可
     case 'Identifier':
       return node.name;
 
-    // For `NumberLiteral` we'll just return the `node`'s value.
+    // 对于 NumberLiteral 我们只需要返回其值即可
     case 'NumberLiteral':
       return node.value;
 
-    // For `StringLiteral` we'll add quotations around the `node`'s value.
+    // 对于 StringLiteral 我们要在两端加上双引号
     case 'StringLiteral':
       return '"' + node.value + '"';
 
-    // And if we haven't recognized the node, we'll throw an error.
+    // 最后如果我们没有匹配到任何一项，则抛出异常
     default:
       throw new TypeError(node.type);
   }
@@ -915,13 +891,12 @@ function codeGenerator(node) {
 /**
  * ============================================================================
  *                                  (۶* ‘ヮ’)۶”
- *                         !!!!!!!!THE COMPILER!!!!!!!!
+ *                         !!!!!!!!编译器!!!!!!!!
  * ============================================================================
  */
 
 /**
- * FINALLY! We'll create our `compiler` function. Here we will link together
- * every part of the pipeline.
+ * 完工！我们创建好了我们的编译器函数，现在我们把上述过程列出来
  *
  *   1. input  => tokenizer   => tokens
  *   2. tokens => parser      => ast
@@ -935,18 +910,18 @@ function compiler(input) {
   let newAst = transformer(ast);
   let output = codeGenerator(newAst);
 
-  // and simply return the output!
+  // 简单的输出就好了
   return output;
 }
 
 /**
  * ============================================================================
  *                                   (๑˃̵ᴗ˂̵)و
- * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!YOU MADE IT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!结束了!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * ============================================================================
  */
 
-// Now I'm just exporting everything...
+// 现在，仅仅导出所有东西
 module.exports = {
   tokenizer,
   parser,
